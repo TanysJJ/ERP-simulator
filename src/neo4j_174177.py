@@ -9,29 +9,41 @@ NEO4J_PORT = os.getenv("NEO4J_PORT", "7687")
 NEO4J_URI = os.getenv("NEO4J_URI", f"bolt://{NEO4J_HOST}:{NEO4J_PORT}")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
-ORDER_QUANTITY = int(os.getenv("ORDER_QUANTITY", "30"))
+ORDER_QUANTITY = int(os.getenv("ORDER_QUANTITY") or "30")
 
 
 def create_erp_graph(driver):
     query = '''
-    MERGE (p:Product {sku: "PC-GAMING-PRO", name: "Gaming PC Pro"})
-    MERGE (s1:Supplier {id: "SUP-01", name: "TechComponents MX", country: "Mexico"})
-    MERGE (s2:Supplier {id: "SUP-02", name: "GlobalSilicon", country: "Taiwan"})
+    MERGE (p:Product {sku: "PC-GAMING-PRO"})
+    SET p.name = "Gaming PC Pro"
 
-    MERGE (c1:Component {sku: "CPU-R7", name: "Ryzen 7 7800X3D", stock: 25, unit_cost: 350.0})
-    MERGE (c2:Component {sku: "GPU-4070", name: "NVIDIA RTX 4070", stock: 18, unit_cost: 550.0})
-    MERGE (c3:Component {sku: "RAM-32GB", name: "DDR5 32GB Kit", stock: 50, unit_cost: 110.0})
-    MERGE (c4:Component {sku: "SSD-1TB", name: "NVMe SSD 1TB", stock: 40, unit_cost: 80.0})
+    MERGE (s1:Supplier {id: "SUP-01"})
+    SET s1.name = "TechComponents MX", s1.country = "Mexico"
 
-    MERGE (p)-[:REQUIRES {qty_per_unit: 1}]->(c1)
-    MERGE (p)-[:REQUIRES {qty_per_unit: 1}]->(c2)
-    MERGE (p)-[:REQUIRES {qty_per_unit: 1}]->(c3)
-    MERGE (p)-[:REQUIRES {qty_per_unit: 2}]->(c4)
+    MERGE (s2:Supplier {id: "SUP-02"})
+    SET s2.name = "GlobalSilicon", s2.country = "Taiwan"
 
-    MERGE (s1)-[:SUPPLIES {lead_time_days: 3}]->(c3)
-    MERGE (s1)-[:SUPPLIES {lead_time_days: 4}]->(c4)
-    MERGE (s2)-[:SUPPLIES {lead_time_days: 12}]->(c1)
-    MERGE (s2)-[:SUPPLIES {lead_time_days: 15}]->(c2)
+    MERGE (c1:Component {sku: "CPU-R7"})
+    SET c1.name = "Ryzen 7 7800X3D", c1.stock = 25, c1.unit_cost = 350.0
+
+    MERGE (c2:Component {sku: "GPU-4070"})
+    SET c2.name = "NVIDIA RTX 4070", c2.stock = 18, c2.unit_cost = 550.0
+
+    MERGE (c3:Component {sku: "RAM-32GB"})
+    SET c3.name = "DDR5 32GB Kit", c3.stock = 50, c3.unit_cost = 110.0
+
+    MERGE (c4:Component {sku: "SSD-1TB"})
+    SET c4.name = "NVMe SSD 1TB", c4.stock = 40, c4.unit_cost = 80.0
+
+    MERGE (p)-[r1:REQUIRES]->(c1) SET r1.qty_per_unit = 1
+    MERGE (p)-[r2:REQUIRES]->(c2) SET r2.qty_per_unit = 1
+    MERGE (p)-[r3:REQUIRES]->(c3) SET r3.qty_per_unit = 1
+    MERGE (p)-[r4:REQUIRES]->(c4) SET r4.qty_per_unit = 2
+
+    MERGE (s1)-[sup1:SUPPLIES]->(c3) SET sup1.lead_time_days = 3
+    MERGE (s1)-[sup2:SUPPLIES]->(c4) SET sup2.lead_time_days = 4
+    MERGE (s2)-[sup3:SUPPLIES]->(c1) SET sup3.lead_time_days = 12
+    MERGE (s2)-[sup4:SUPPLIES]->(c2) SET sup4.lead_time_days = 15
     '''
     driver.execute_query(query)
     print("Grafo BOM de Gaming PC cargado en Neo4j.")
@@ -67,14 +79,11 @@ def analyze_shortages(driver, order_qty):
 
 
 def main():
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-    try:
+    with GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)) as driver:
         driver.verify_connectivity()
         print("Conexion exitosa a Neo4j.")
         create_erp_graph(driver)
         analyze_shortages(driver, ORDER_QUANTITY)
-    finally:
-        driver.close()
 
 
 if __name__ == "__main__":
