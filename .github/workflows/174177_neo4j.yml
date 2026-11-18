@@ -1,12 +1,8 @@
 name: 174177 - Neo4j ERP Tutorial
 
 on:
-  workflow_dispatch:
-    inputs:
-      order_quantity:
-        description: "Cantidad de Gaming PCs a fabricar"
-        required: true
-        default: "30"
+  push:
+    branches: [ "feature/174177" ]
 
 jobs:
   run-neo4j-174177:
